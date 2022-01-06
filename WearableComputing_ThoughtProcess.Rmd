@@ -1,0 +1,122 @@
+---
+title: "WearableComputing_ThoughtProcess"
+author: "Luis Ivan"
+date: "1/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Important Notes
+Two folders after unzipping:  
+-  test: with subject_test, X_test, y_test and inertial signals.  
+-  train: with subject_test, X_test, y_test and inertial signals.  
+-  activity_labels with the definitions o activity.  
+-  features with the definition of the columns  
+-  features_info with explanations about features.
+-  README with overall information
+
+# First step: Merging data sets
+
+First, we need to read the overall information that comes with the data, before getting into a specific data set.
+We set up our two important variables, activity_labels (that translates the results of the test into  something user-friendly),
+and features, that are the definition of the data set data.
+
+```{r overall_info}
+activity_labels <- read.table('UCI HAR Dataset/activity_labels.txt')
+features <- read.table('UCI HAR Dataset/features.txt')
+str(activity_labels)
+str(features)
+```
+
+Then, we start reading the training data set. If we find everything correct, we will do the same process afterwards for the test data set.
+We're expecting that the number of features obtained previously matches with the columns in the training_set. Also, we expect that the number of activity_labels matches with the different values in Y_train.
+
+```{r reading_data_set}
+dataTrain <- read.table('UCI HAR Dataset/train/X_train.txt')
+activityTrain <- read.table('UCI HAR Dataset/train/y_train.txt')
+dataTest <- read.table('UCI HAR Dataset/test/X_test.txt')
+activityTest <- read.table('UCI HAR Dataset/test/y_test.txt')
+subjectTrain <- read.table('UCI HAR Dataset/train/subject_train.txt')
+subjectTest <- read.table('UCI HAR Dataset/test/subject_test.txt')
+
+if(nrow(dataTrain) == nrow(activityTrain)){
+  sprintf("Both training set and labels have same number of rows = %d", nrow(dataTrain))
+} else {
+  sprintf("Training Set and Labels are different size! Cannot merge without issues")
+}
+if(nrow(dataTest) == nrow(activityTest)){
+  sprintf("Both test set and labels have same number of rows = %d", nrow(dataTrain))
+} else {
+  sprintf("Test Set and Labels are different size! Cannot merge without issues")
+}
+if(nrow(features) == ncol(dataTest) & nrow(features) == ncol(dataTrain))
+{
+  sprintf("Both sets have the same number of features = %d", nrow(features))
+}else{
+  sprintf("The sets sizes are different")
+}
+```
+
+**SUCCESS!**. Our training and test sets are the same size as the labels, and the number of features are the same.
+Then, we can continue working on migrating them.
+
+Now, let's merge the training set and test set in one. We will use the plyr library for this.
+
+```{r plyr}
+library(dplyr)
+dataFeatures <- rbind(dataTest, dataTrain)
+dataActivity <- rbind(activityTest, activityTrain)
+dataSubject <- rbind(subjectTest, subjectTrain)
+colnames(dataSubject) <- c("Subject")
+colnames(dataActivity) <- c("Activity")
+colnames(dataFeatures) <- features$V2
+data_merged <- cbind(dataSubject, dataActivity, dataFeatures)
+str(data_merged)
+```
+
+# SOLUTION TO PART 1 <- DATA MERGED in data_merged
+
+Now, we want to extract only the measurements in the mean and standard deviation. From the features_info.txt file, we can see that each measurement has 17 different parameters, where two of them are mean (for the mean) and std (for the standard deviation). However, some measurements don't have all the 17 parameters, so the right approach would be to filter just the ones with mean and std.
+
+```{r filtering_colnames}
+data_merged_filtered <- data_merged %>% select(grep("mean\\(\\)|std\\(\\)|Subject|Activity", colnames(data_merged)))
+str(data_merged_filtered)
+```
+
+# SOLUTION TO PART 2 <- data_merged_filtered
+
+From 752 variables, we reduced it to 68 variables. Now, to use descriptive activity names, we will take the names in activity_labels.txt.
+
+```{r activity_names}
+data_merged_filtered_renamed <- data_merged_filtered %>% mutate(Activity=activity_labels$V2[Activity])
+str(data_merged_filtered_renamed)
+```
+
+# SOLUTION TO PART 3 <- data_merged_filtered_renamed
+
+Now, we need to rename the features for them to be more understandable
+```{r feature_renaming}
+names(data_merged_filtered_renamed) <- gsub("Acc", "Acceleration", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("-mean()", "Mean", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("-std", "StdDeviation", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("Gyro", "Gyroscope", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("^t", "Time", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("^f", "Frequency", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("Mag", "Magnitude", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed) <- gsub("BodyBody", "Body", names(data_merged_filtered_renamed))
+names(data_merged_filtered_renamed)
+```
+
+# SOLUTION TO PART 4 <- data_merged_filtered_renamed
+
+For part 5, we need to create a tidy data set with the average of each variable for each activity and each subject.
+
+```{r casting_data_frames}
+library(reshape2)
+tidy_set_melted <- melt(data_merged_filtered_renamed, id = c("Subject", "Activity"))
+tidy_set <- dcast(tidy_set_melted, Subject + Activity ~ variable, mean)
+str(tidy_set)
+```
