@@ -2,9 +2,8 @@ run_analysis <- function(){
   library(dplyr)
   library(reshape2)
   
-  #Unzipping the UCI HARD Dataset if it's not unzipped yet
-  if(dir.exists("UCI HAR Dataset"))
-  {
+  #Unzipping the UCI HAR Dataset if it's not unzipped yet
+  if(!dir.exists("UCI HAR Dataset")){
     unzip('getdata_projectfiles_UCI HAR Dataset.zip')
   } else {
     print("Directory already exists, not unzipping again")
@@ -41,8 +40,8 @@ run_analysis <- function(){
   
   #Renaming feature labels for them to be understandable (STEP 4)
   names(data_merged_filtered_renamed) <- gsub("Acc", "Acceleration", names(data_merged_filtered_renamed))
-  names(data_merged_filtered_renamed) <- gsub("-mean()", "Mean", names(data_merged_filtered_renamed))
-  names(data_merged_filtered_renamed) <- gsub("-std", "StdDeviation", names(data_merged_filtered_renamed))
+  names(data_merged_filtered_renamed) <- gsub("-mean\\(\\)", "Mean", names(data_merged_filtered_renamed))
+  names(data_merged_filtered_renamed) <- gsub("-std\\(\\)", "StdDeviation", names(data_merged_filtered_renamed))
   names(data_merged_filtered_renamed) <- gsub("Gyro", "Gyroscope", names(data_merged_filtered_renamed))
   names(data_merged_filtered_renamed) <- gsub("^t", "Time", names(data_merged_filtered_renamed))
   names(data_merged_filtered_renamed) <- gsub("^f", "Frequency", names(data_merged_filtered_renamed))
